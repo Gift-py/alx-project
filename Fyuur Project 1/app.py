@@ -13,6 +13,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
+from sqlalchemy import desc
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -44,6 +45,7 @@ class Venue(db.Model):
     website_link = db.Column(db.String(120))
     looking_for_talent = db.Column(db.Boolean())
     seeking_description = db.Column(db.String(500))
+    num_upcoming_shows = db.Column(db.Integer())
 
     def __init__(self, name, city, state, phone, genres, image_link, facebook_link, website_link, looking_for_venues, seeking_description):
       self.name = name
@@ -118,7 +120,7 @@ def venues():
   # TODO: replace with real venues data.
   # num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
 
-  data = Venue.query.all()
+  data = Venue.query.order_by(desc(Venue.num_upcoming_shows)).all()
   print('\n\n\n',data,'\n\n\n')
   return render_template('pages/venues.html', areas=data);
 
