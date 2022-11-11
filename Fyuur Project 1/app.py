@@ -32,7 +32,6 @@ migrate = Migrate(app, db)
 
 class Venue(db.Model):
     __tablename__ = 'Venue'
-    __tablename__ = 'Venue'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
@@ -43,13 +42,13 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
     description = db.Column(db.String(500), default='')
-    seeking_talent = db.Column(Boolean, default=False)
+    seeking_talent = db.Column(Boolean)
     website = db.Column(String(120))
     genres = db.Column(ARRAY(String))
     shows = db.relationship('Show', backref='Venue', lazy='dynamic')
 
     def __init__(self, name, genres, address, city, state, phone, website, facebook_link, image_link,
-                 seeking_talent=False, description=""):
+                 seeking_talent, description=""):
         self.name = name
         self.genres = genres
         self.city = city
@@ -60,6 +59,7 @@ class Venue(db.Model):
         self.facebook_link = facebook_link
         self.website = website
         self.description = description
+        self.seeking_talent = seeking_talent
 
     def insert(self):
         db.session.add(self)
@@ -99,7 +99,8 @@ class Venue(db.Model):
             'facebook_link':self.facebook_link,
             'seeking_talent' :self.seeking_talent,
             'description' :self.description,
-            'image-link' :self.image_link
+            'image_link' :self.image_link,
+            'state' :self.state
         }
 
 class Artist(db.Model):
@@ -110,10 +111,10 @@ class Artist(db.Model):
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
+    genres = db.Column(ARRAY(String))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, default=False)
+    seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120), default=' ')
     website = db.Column(db.String(120))
     shows = db.relationship('Show', backref='Artist', lazy=True)
@@ -121,7 +122,7 @@ class Artist(db.Model):
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
     def __init__(self, name, genres, city, state, phone, image_link, website, facebook_link,
-                 seeking_venue=False, seeking_description=""):
+                 seeking_venue, seeking_description=""):
         self.name = name
         self.genres = genres
         self.city = city
@@ -131,6 +132,7 @@ class Artist(db.Model):
         self.facebook_link = facebook_link
         self.seeking_description = seeking_description
         self.image_link = image_link
+        self.seeking_venue = seeking_venue
     
     def insert(self):
         db.session.add(self)
@@ -297,6 +299,8 @@ def show_venue(venue_id):
     venue_details["past_shows"] = past_shows
     venue_details["past_shows_count"] = len(past_shows)
 
+    print('\n\n\n', venue_details, '\n\n\n')
+
     # data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
     return render_template('pages/show_venue.html', venue=venue_details)
   return render_template('errors/404.html')
@@ -314,6 +318,15 @@ def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
   try:
+    seeking_talent = False
+    descp = ''    
+    try:
+      if request.form['seeking_talent'] == 'y':
+        seeking_talent = True
+        descp = request.form['seeking_description']
+    except:
+      seeking_talent = False
+      descp = '' 
     new_venue = Venue(
       name=request.form['name'],
       genres=request.form.getlist('genres'),
@@ -321,11 +334,11 @@ def create_venue_submission():
       city=request.form['city'],
       state=request.form['state'],
       phone=request.form['phone'],
-      website=request.form['website'],
+      website=request.form['website_link'],
       facebook_link=request.form['facebook_link'],
       image_link=request.form['image_link'],
-      seeking_talent=request.form['seeking_talent'],
-      description=request.form['seeking_description'],
+      seeking_talent=seeking_talent,
+      description=descp
     )
     #insert new venue records into the db
     Venue.insert(new_venue)
@@ -419,30 +432,30 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
   # TODO: take values from the form submitted, and update existing
   # artist record with ID <artist_id> using the new attributes  
-    form = ArtistForm(request.form)
+
     artist_data = Artist.query.get(artist_id)
     if artist_data:
-        if form.validate():
-            seeking_venue = False
-            seeking_description = ''
-            if 'seeking_venue' in request.form:
-                seeking_venue = request.form['seeking_venue'] == 'y'
-            if 'seeking_description' in request.form:
-                seeking_description = request.form['seeking_description']
-            setattr(artist_data, 'name', request.form['name'])
-            setattr(artist_data, 'genres', request.form.getlist('genres'))
-            setattr(artist_data, 'city', request.form['city'])
-            setattr(artist_data, 'state', request.form['state'])
-            setattr(artist_data, 'phone', request.form['phone'])
-            setattr(artist_data, 'website', request.form['website'])
-            setattr(artist_data, 'facebook_link', request.form['facebook_link'])
-            setattr(artist_data, 'image_link', request.form['image_link'])
-            setattr(artist_data, 'seeking_description', seeking_description)
-            setattr(artist_data, 'seeking_venue', seeking_venue)
-            Artist.update(artist_data)
-            return redirect(url_for('show_artist', artist_id=artist_id))
-        else:
-            print(form.errors)
+      seeking_venue = False
+      descp = ''    
+      try:
+        if request.form['seeking_venue'] == 'y':
+          seeking_venue = True
+          descp = request.form['seeking_description']
+      except:
+        seeking_venue = False
+        descp = '' 
+      setattr(artist_data, 'name', request.form['name'])
+      setattr(artist_data, 'genres', request.form.getlist('genres'))
+      setattr(artist_data, 'city', request.form['city'])
+      setattr(artist_data, 'state', request.form['state'])
+      setattr(artist_data, 'phone', request.form['phone'])
+      setattr(artist_data, 'website', request.form['website'])
+      setattr(artist_data, 'facebook_link', request.form['facebook_link'])
+      setattr(artist_data, 'image_link', request.form['image_link'])
+      setattr(artist_data, 'seeking_description', descp)
+      setattr(artist_data, 'seeking_venue', seeking_venue)
+      db.session.commit()
+      return redirect(url_for('show_artist', artist_id=artist_id))        
     return render_template('errors/404.html'), 404
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
@@ -462,42 +475,40 @@ def edit_venue(venue_id):
     form.website.data = venue_details["website"]
     form.facebook_link.data = venue_details["facebook_link"]
     form.seeking_talent.data = venue_details["seeking_talent"]
-    form.seeking_description.data = venue_details["seeking_description"]
+    form.seeking_description.data = venue_details["description"]
     form.image_link.data = venue_details["image_link"]
-    return render_template('form/edit_venue.html', form=form, Venue=venue_details)
+    return render_template('forms/edit_venue.html', form=form, venue=venue_details)
   return render_template('errors/404.html')
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
   # TODO: take values from the form submitted, and update existing
   # venue record with ID <venue_id> using the new attributes
-  form = VenueForm(request.form)
-  venue_data = Venue.query.get(venue_id)
-  if venue_data:
-      if form.validate():
-          seeking_talent = False
-          seeking_description = ''
-          if 'seeking_talent' in request.form:
-              seeking_talent = request.form['seeking_talent'] == 'y'
-          if 'seeking_description' in request.form:
-              seeking_description = request.form['seeking_description']
-          setattr(venue_data, 'name', request.form['name'])
-          setattr(venue_data, 'genres', request.form.getlist('genres'))
-          setattr(venue_data, 'address', request.form['address'])
-          setattr(venue_data, 'city', request.form['city'])
-          setattr(venue_data, 'state', request.form['state'])
-          setattr(venue_data, 'phone', request.form['phone'])
-          setattr(venue_data, 'website', request.form['website'])
-          setattr(venue_data, 'facebook_link', request.form['facebook_link'])
-          setattr(venue_data, 'image_link', request.form['image_link'])
-          setattr(venue_data, 'seeking_description', seeking_description)
-          setattr(venue_data, 'seeking_talent', seeking_talent)
-          Venue.update(venue_data)
-          return redirect(url_for('show_venue', venue_id=venue_id))
-      else:
-          print(form.errors)
-  return render_template('errors/404.html'), 404
-
+  
+    venue_data = Venue.query.get(venue_id)
+    if venue_data:
+      seeking_talent = False
+      descp = ''    
+      try:
+        if request.form['seeking_talent'] == 'y':
+          seeking_talent = True
+          descp = request.form['seeking_description']
+      except:
+        seeking_talent = False
+        descp = '' 
+      setattr(venue_data, 'name', request.form['name'])
+      setattr(venue_data, 'genres', request.form.getlist('genres'))
+      setattr(venue_data, 'city', request.form['city'])
+      setattr(venue_data, 'state', request.form['state'])
+      setattr(venue_data, 'phone', request.form['phone'])
+      setattr(venue_data, 'website', request.form['website'])
+      setattr(venue_data, 'facebook_link', request.form['facebook_link'])
+      setattr(venue_data, 'image_link', request.form['image_link'])
+      setattr(venue_data, 'seeking_description', descp)
+      setattr(venue_data, 'seeking_talent', seeking_talent)
+      db.session.commit()
+      return redirect(url_for('show_venue', venue_id=venue_id))        
+    return render_template('errors/404.html'), 404
 #  Create Artist
 #  ----------------------------------------------------------------
 
@@ -513,22 +524,26 @@ def create_artist_submission():
   # TODO: modify data to be the data object returned from db insertion
   try:
     seeking_venue = False
-    seeking_description = ''
-    if 'seeking_venue' in request.form:
-      seeking_venue = request.form['seeking_venue'] == 'y'
-    if 'seeking_description' in request.form:
-      seeking_description = request.form['seeking_description']
+    descp = ''    
+    try:
+      if request.form['seeking_talent'] == 'y':
+        seeking_venue = True
+        descp = request.form['seeking_description']
+    except:
+      seeking_venue = False
+      descp = '' 
+
     new_artist = Artist(
       name=request.form['name'],
-      genres=request.form['genres'],
+      genres=request.form.getlist('genres'),
       city=request.form['city'],
       state= request.form['state'],
       phone=request.form['phone'],
-      website=request.form['website'],
+      website=request.form['website_link'],
       image_link=request.form['image_link'],
       facebook_link=request.form['facebook_link'],
       seeking_venue=seeking_venue,
-      seeking_description=seeking_description,
+      seeking_description=descp,
     )
     Artist.insert(new_artist)
     # on successful db insert, flash success
